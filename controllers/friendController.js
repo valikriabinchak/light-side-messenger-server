@@ -23,7 +23,7 @@ exports.getUserFriends = async ( req, res ) => {
 
         const friends = await Users.find(
             { email: { $in: friendEmails } },
-            'firstName secondName email lastSeen'
+            'firstName secondName email lastSeen imagePath'
         ).lean();
 
         const friendsWithLastMessage = [];
