@@ -23,7 +23,16 @@ const userSchema = new mongoose.Schema( {
     },
     socketId: {
         type: String,
-    }
+    },
+    nativeLanguage: {
+        type: String,
+    },
+    ages: {
+        type: Number,
+    },
+    imagePath: {
+        type: String,
+    },
 } )
 
 const Users = mongoose.model( "Users", userSchema );

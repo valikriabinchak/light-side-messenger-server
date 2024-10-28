@@ -48,7 +48,7 @@ exports.loginUser = async ( req, res ) => {
             console.error( 'Error updating lastSeen on disconnect:', err );
         };
 
-        res.status( 200 ).json( { token } );
+        res.status( 200 ).json( { token, imagePath: user.imagePath } );
     }
     catch ( err ) {
         console.error( err )
@@ -78,10 +78,12 @@ exports.resetUserPassword = ( req, res ) => {
 };
 
 exports.getUserProfile = async ( req, res ) => {
-    const { email } = req.user;
+    const token = req.headers.authorization.split( ' ' )[ 1 ];
+    const decoded = jwt.verify( token, 'lightsidemess123' );
+    const userEmail = decoded.email;
 
     try {
-        const user = await Users.findOne( { email } );
+        const user = await Users.findOne( { email: userEmail } );
         if ( !user ) return res.status( 404 ).json( { message: 'User not found' } );
 
         res.status( 200 ).json( user );
@@ -91,14 +93,35 @@ exports.getUserProfile = async ( req, res ) => {
     }
 };
 
-exports.updateUserProfile = ( req, res ) => {
-    const token = req.headers.authorization.split( ' ' )[ 1 ];
-    const decoded = jwt.verify( token, 'lightsidemess123' );
-    const userEmail = decoded.email;
+exports.updateUserProfile = async ( req, res ) => {
+    try {
+        // Extract token from the Authorization header
+        const token = req.headers.authorization?.split( ' ' )[ 1 ];
+        if ( !token ) return res.status( 401 ).json( { message: 'Authorization token missing' } );
 
-    console.log( "DECODED TOKEN: ", decoded );
-    Users.findByIdAndUpdate( userEmail, req.body, { new: true }, ( err, user ) => {
-        if ( err ) return res.status( 500 ).send( err );
-        res.status( 200 ).json( user );
-    } );
+        // Verify the JWT token
+        const decoded = jwt.verify( token, 'lightsidemess123' );
+        const userEmail = decoded.email;
+
+        // Find the user by email and update their data
+        const updatedUser = await Users.findOneAndUpdate(
+            { email: userEmail }, // Filter by email
+            req.body, // Update data from the request body
+            { new: true, runValidators: true } // Return the updated document and validate inputs
+        );
+
+        if ( !updatedUser ) {
+            return res.status( 404 ).json( { message: 'User not found' } );
+        }
+
+        // Respond with the updated user profile
+        res.status( 200 ).json( updatedUser );
+
+    } catch ( error ) {
+        if ( error.name === 'JsonWebTokenError' ) {
+            return res.status( 401 ).json( { message: 'Invalid token' } );
+        }
+        console.error( 'Error updating user profile:', error );
+        res.status( 500 ).json( { message: 'Internal Server Error' } );
+    }
 };
